@@ -7,6 +7,8 @@ from openai import AzureOpenAI
 import os
 import requests
 from dotenv import load_dotenv
+from PIL import Image
+import json
 
 app = FastAPI()
 
@@ -27,6 +29,7 @@ async def main():
 # chatbot API to be extended with OpenAI code
 @app.post("/chat")
 async def chat(request: Request):
+    print(request)
     json = await request.json()
     print(json)
 
@@ -55,7 +58,8 @@ async def chat(request: Request):
                     "parameters": {
                         "endpoint": os.environ["AZURE_AI_SEARCH_ENDPOINT"],
                         "key": os.environ["AZURE_AI_SEARCH_API_KEY"],
-                        "indexName": os.environ["AZURE_AI_SEARCH_INDEX"]
+                        "indexName": os.environ["AZURE_AI_SEARCH_INDEX"],
+                        "topNDocuments": 10,
                     }
                 }
             ]
@@ -69,11 +73,42 @@ async def chat(request: Request):
 async def generateImage(request: Request):
     json = await request.json()
     print(json)
+    load_dotenv()
+    endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+    deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT_ID")
+    # convert dict into a sentence.  It should look like "The {key} is {value}"
+    instructions = """
+    Create a text prompt for DALLE that will generate an image of a 3D Pixar-like style character
+    that will be my avatar. Avatar is wearing official Manchester United jersey and red baseball cap.
+    Here is an example of the text prompt:
+    Create me a portrait of 3d Pixar-like style character that will be my avatar. I am caucausian male, 
+    have simmetric, oval face with medium thin eyebrows, brown eyes, 4mm full beard and moustache, short brown hair.
+    Avatar is wearing official Manchester United jersey and red baseball cap.
+    If the description is "None", omit that part of the description.
+    The character should have the following characteristics: 
+    """
+    for key in json:
+        if json[key] == "":
+            json[key] = "None"
+        prompt = f"The {key} is {json[key]}."
+        instructions += prompt + " "
+    
+    adjusted_prompt = await chat(instructions)
+    #
+    print("description: ", adjusted_prompt)
+    client = openai.AzureOpenAI(
+        azure_endpoint="https://aoioiavolvoteam2.openai.azure.com/",
+        api_key=api_key,
+        api_version="2024-02-01",
+    )
 
-    ############################
-    ### Add OpenAI code here ###
-    ############################
-
-    return {"url": "https://via.placeholder.com/100"}
+    result = client.images.generate(
+        model="Dalle3", # the name of your DALL-E 3 deployment
+        prompt=adjusted_prompt,
+        n=1
+    )
+    print(result.data[0].url)
+    return {"url": result.data[0].url}
 
 app.mount("/", StaticFiles(directory="public"), name="ui")
