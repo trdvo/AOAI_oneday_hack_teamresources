@@ -2,6 +2,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
 from starlette.staticfiles import StaticFiles
+import openai
+from openai import AzureOpenAI
+import os
+import requests
+from dotenv import load_dotenv
 
 app = FastAPI()
 
@@ -26,11 +31,40 @@ async def chat(request: Request):
     print(json)
 
     ############################
-    ### Add OpenAI code here ###
-    ############################
+    load_dotenv()
+    endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+    deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT_ID")
+    print(f"endpoint: {endpoint}, api_key: {api_key}, deployment: {deployment}")
+    client = openai.AzureOpenAI(
+        base_url=f"{endpoint}/openai/deployments/{deployment}/extensions",
+        api_key=api_key,
+        api_version="2023-08-01-preview",
+    )
 
-    return {"message": "Your message was: " + json["message"]}
-
+    completion = client.chat.completions.create(
+        model=deployment,
+        messages=[
+            {"role": "user", "content": json["message"]},
+            {"role": "assistant", "content": ""}  # The assistant message is optional
+        ],
+        extra_body={
+            "dataSources": [
+                {
+                    "type": "AzureCognitiveSearch",
+                    "parameters": {
+                        "endpoint": os.environ["AZURE_AI_SEARCH_ENDPOINT"],
+                        "key": os.environ["AZURE_AI_SEARCH_API_KEY"],
+                        "indexName": os.environ["AZURE_AI_SEARCH_INDEX"]
+                    }
+                }
+            ]
+        }
+    )
+    # extract the message content from the completion dict
+    print(" this is the response" + str(completion.choices[0].message.content))
+    response = completion.choices[0].message.content
+    return {"message": "Your message was: " + response}
 # Image generattion API to be extended with OpenAI code
 @app.post("/generateImage")
 async def generateImage(request: Request):
