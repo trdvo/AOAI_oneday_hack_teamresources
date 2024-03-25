@@ -71,8 +71,8 @@ async def chat(request: Request):
 # Image generattion API to be extended with OpenAI code
 @app.post("/generateImage")
 async def generateImage(request: Request):
-    json = await request.json()
-    print(json)
+    json_image = await request.json()
+    print(json_image)
     load_dotenv()
     endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
     api_key = os.environ.get("AZURE_OPENAI_API_KEY")
@@ -80,23 +80,36 @@ async def generateImage(request: Request):
     # convert dict into a sentence.  It should look like "The {key} is {value}"
     instructions = """
     Create a text prompt for DALLE that will generate an image of a 3D Pixar-like style character
-    that will be my avatar. Avatar is wearing official Manchester United jersey and red baseball cap.
-    Here is an example of the text prompt:
+    that will be my avatar.
+    Here is an example of the text prompt where the face was simmetric, oval, the eyebrows were medium thin,
+    the eyes were brown, the beard and moustache were 4mm full, and the hair was short and brown.
     Create me a portrait of 3d Pixar-like style character that will be my avatar. I am caucausian male, 
     have simmetric, oval face with medium thin eyebrows, brown eyes, 4mm full beard and moustache, short brown hair.
-    Avatar is wearing official Manchester United jersey and red baseball cap.
-    If the description is "None", omit that part of the description.
-    The character should have the following characteristics: 
+    Now create something similar with the following characteristics:
+    If the description is "None", omit that part of the description. Remember that the Avatar is wearing official
+    Manchester United jersey and red baseball cap.
     """
-    for key in json:
-        if json[key] == "":
-            json[key] = "None"
-        prompt = f"The {key} is {json[key]}."
+    for key in json_image:
+        if json_image[key] == "":
+            json_image[key] = "None"
+        prompt = f"The {key} is {json_image[key]}."
         instructions += prompt + " "
-    
-    adjusted_prompt = await chat(instructions)
+        
+    client_image_prompt = openai.AzureOpenAI(
+        base_url=f"{endpoint}/openai/deployments/{deployment}",
+        api_key=api_key,
+        api_version="2023-08-01-preview",
+    )
+    completion = client_image_prompt.chat.completions.create(
+        model=deployment,
+        messages=[
+            {"role": "user", "content": instructions},
+            # {"role": "assistant", "content": ""}  # The assistant message is optional
+        ],
+    )
+    adjusted_prompt = completion.choices[0].message.content
+    print("adjusted_prompt: ", adjusted_prompt)
     #
-    print("description: ", adjusted_prompt)
     client = openai.AzureOpenAI(
         azure_endpoint="https://aoioiavolvoteam2.openai.azure.com/",
         api_key=api_key,
