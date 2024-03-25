@@ -9,7 +9,7 @@ import requests
 from dotenv import load_dotenv
 from PIL import Image
 import json
-
+from database_app import query_database
 app = FastAPI()
 
 # Add CORS middleware
@@ -26,9 +26,26 @@ app.add_middleware(
 async def main():
     return FileResponse("public/index.html")
 
+
 # chatbot API to be extended with OpenAI code
 @app.post("/chat")
 async def chat(request: Request):
+    print(request)
+    json = await request.json()
+    print(json)
+    message_from_db = query_database(json["message"])
+
+    # extract the message content from the completion which looks like this:
+    return {"message": str(message_from_db)}
+
+
+
+
+
+
+# chatbot API to be extended with OpenAI code
+@app.post("/chat")
+async def chat2(request: Request):
     print(request)
     json = await request.json()
     print(json)
