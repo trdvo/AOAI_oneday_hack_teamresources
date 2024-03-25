@@ -46,7 +46,7 @@ async def chat(request: Request):
         model=deployment,
         messages=[
             {"role": "user", "content": json["message"]},
-            {"role": "assistant", "content": ""}  # The assistant message is optional
+            #{"role": "assistant", "content": ""}  # The assistant message is optional
         ],
         extra_body={
             "dataSources": [
@@ -61,10 +61,9 @@ async def chat(request: Request):
             ]
         }
     )
-    # extract the message content from the completion dict
-    print(" this is the response" + str(completion.choices[0].message.content))
-    response = completion.choices[0].message.content
-    return {"message": "Your message was: " + response}
+    # extract the message content from the completion which looks like this:
+    print(str(completion.choices[0].message.content))
+    return {"message": str(completion.choices[0].message.content)}
 # Image generattion API to be extended with OpenAI code
 @app.post("/generateImage")
 async def generateImage(request: Request):
