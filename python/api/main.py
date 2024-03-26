@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 from PIL import Image
 import json
 from database_app import query_database
+
+load_dotenv()
+
 app = FastAPI()
 
 # Add CORS middleware
